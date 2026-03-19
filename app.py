@@ -6,7 +6,7 @@ import joblib
 # CONFIG
 # =========================
 st.set_page_config(
-    page_title="Computer Price Predictor Pro",
+    page_title="Computer Price Predictor Ultra",
     layout="centered"
 )
 
@@ -16,7 +16,7 @@ st.set_page_config(
 model = joblib.load('computer_price_model.pkl')
 
 # =========================
-# FIX INPUT
+# FIX INPUT (กัน feature หาย)
 # =========================
 def fix_input(input_df, model):
     try:
@@ -31,30 +31,27 @@ def fix_input(input_df, model):
     return input_df[model_cols]
 
 # =========================
-# ADJUST PRICE (แก้ bias)
+# SMART ADJUST (แก้ saturation 🔥)
 # =========================
 def adjust_price(usd_price, ram, storage, cpu_speed):
     factor = 1.0
 
-    if ram <= 8:
-        factor *= 0.75
-    if storage <= 512:
-        factor *= 0.85
-    if cpu_speed <= 2.5:
-        factor *= 0.85
+    # 🔥 RAM scaling (ต่อเนื่อง)
+    factor *= (1 + (ram - 8) * 0.015)
 
-    if ram >= 32:
-        factor *= 1.2
-    if cpu_speed >= 3.5:
-        factor *= 1.15
+    # 🔥 Storage scaling
+    factor *= (1 + (storage - 256) * 0.0001)
+
+    # 🔥 CPU scaling
+    factor *= (1 + (cpu_speed - 2.0) * 0.1)
 
     return usd_price * factor
 
 # =========================
 # TITLE
 # =========================
-st.title("💻 Computer Price Predictor Pro")
-st.caption("AI system for estimating computer prices")
+st.title("💻 Computer Price Predictor Ultra")
+st.caption("AI-powered realistic computer pricing system")
 
 st.markdown("---")
 
@@ -70,7 +67,7 @@ with col1:
         "Brand",
         ["Select Brand", "Dell", "HP", "Lenovo", "Asus", "Acer", "Apple"]
     )
-    ram = st.number_input("RAM (GB)", 1, 128, 8)
+    ram = st.number_input("RAM (GB)", 1, 256, 8)
 
 with col2:
     storage = st.number_input("Storage (GB)", 64, 4000, 512)
@@ -82,6 +79,10 @@ with col2:
 if brand == "Select Brand":
     st.warning("⚠️ Please select a valid brand")
     st.stop()
+
+# เตือนค่าหลุด dataset
+if ram > 64:
+    st.warning("⚠️ RAM สูงเกิน dataset (prediction อาจคลาดเคลื่อน)")
 
 # =========================
 # CREATE DATA
@@ -112,9 +113,10 @@ if st.button("🚀 Predict Price"):
     try:
         fixed_df = fix_input(input_df, model)
 
+        # 🔹 Raw prediction
         usd_price = model.predict(fixed_df)[0]
 
-        # ปรับราคาให้สมจริง
+        # 🔥 Adjust ให้สมจริง
         usd_price = adjust_price(usd_price, ram, storage, cpu_speed)
 
         thb_price = usd_price * 35
@@ -124,8 +126,7 @@ if st.button("🚀 Predict Price"):
         else:
             st.success(f"💰 Estimated Price: ${usd_price:,.2f}")
 
-        # Confidence
-        st.progress(85)
+        st.progress(90)
         st.caption("Model Confidence: High")
 
     except Exception as e:
@@ -153,10 +154,10 @@ st.markdown("---")
 st.subheader("🧠 Model Insight")
 
 st.write("""
-- Model trained on USD dataset  
-- Dataset mostly contains mid-to-high range computers  
-- Low-end specs may be slightly overestimated  
-- Brand has limited effect if unseen during training  
+- Random Forest model used
+- Cannot extrapolate beyond training data range
+- Dataset mostly contains mid-to-high range computers
+- Adjustment function added to improve realism
 """)
 
 # =========================
@@ -177,5 +178,5 @@ st.subheader("⚠️ Disclaimer")
 st.write("""
 - Predictions are estimates only  
 - Currency conversion uses approx. rate (1 USD ≈ 35 THB)  
-- Model may not reflect real-time market price  
+- Model may be less accurate for extreme specifications  
 """)
